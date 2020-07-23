@@ -1,0 +1,42 @@
+{
+	"name": "EHR Patient Feed",
+
+	"namespace": "Vanderbilt\\EHRPatientFeedExternalModule",
+
+	"framework-version": 5,
+
+	"description": "TBD (suggestions welcome)",
+
+	"authors": [
+		{
+			"name": "Mark McEver",
+			"email": "datacore@vumc.org",
+			"institution": "Vanderbilt University Medical Center"
+		}
+	],
+
+	"no-auth-pages": [
+		"handle-event"
+	],
+
+	"links": {
+		"project": [
+			{
+				"name": "EHR Patient Feed",
+				"icon": "fas fa-hospital-user",
+				"url": "subscribed-feeds.php",
+				"show-header-and-footer": true
+			}
+		]
+	},
+
+	"crons-disabled": [
+        {
+            "cron_name": "cron",
+            "cron_description": "EHR Patient Feed",
+            "method": "cron",
+            "cron_frequency": "60",
+            "cron_max_run_time": "3600"
+        }
+    ]
+}

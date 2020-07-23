@@ -1,0 +1,19 @@
+<?php namespace Vanderbilt\EHRPatientFeedExternalModule;
+
+$feedId = $_POST['feed_id'];
+
+$creatingFeed = false;
+if(empty($feedId)){
+    // We're creating a new feed.
+    // Use the log ID as the feed ID.  It's a really simple way to ensure we have a unique ID.
+    $feedId = $module->log('Getting next feed ID');
+    $creatingFeed = true;
+}
+
+$module->updateDescription($feedId, $_POST['description']);
+
+if($creatingFeed){
+    $module->updateSubscription($feedId, SUBSCRIBED);
+}
+
+echo 'success';
