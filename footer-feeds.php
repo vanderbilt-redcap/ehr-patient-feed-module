@@ -96,7 +96,7 @@ else{
 
                 table.on('click', 'button.show-url', function(){
                     var data = module.getDataForButton(this)
-                    simpleDialog(data.url, 'Feed URL', null, 800)
+                    simpleDialog(data.url, 'Feed URL', null, 900)
                 })
 
                 table.on('click', 'button.view-events', function(){
