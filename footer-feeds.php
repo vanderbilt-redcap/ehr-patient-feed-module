@@ -18,12 +18,6 @@ else{
     }
 }
 
-if(empty($feeds)){
-    ?>
-    <p><?=$emptyMessage?></p>
-    <?php
-}
-
 ?>
 
 <div class="modal edit-feed" tabindex="-1" role="dialog">
@@ -59,15 +53,15 @@ if(empty($feeds)){
             },
             initializeTable: function(){
                 var feeds = <?=json_encode($feeds)?>;
-                if(feeds.length === 0){
-                    return
-                }
 
                 var table = container.find('table').DataTable({
                     searching: false,
                     info: false,
                     paging: false,
                     data: feeds,
+                    language: {
+                        emptyTable: <?=json_encode($emptyMessage)?>
+                    },
                     columns: [
                         {
                             data: 'feed_id',
