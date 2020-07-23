@@ -208,9 +208,16 @@ if(empty($feeds)){
                             location.reload()
                         }
                         else{
-                            alert('An error occurred while creating the feed.  See the browser console log for details.')
+                            console.log('Update feed error:', response)
+
+                            var message = response.message
+                            if(!message){
+                                message = 'An error occurred while creating the feed.  See the browser console log for details.'
+                            }
+                            
+                            alert(message)
+                            
                             editFeedModal.show()
-                            console.log('Create feed error:', response)
                         }
                     })
                 })

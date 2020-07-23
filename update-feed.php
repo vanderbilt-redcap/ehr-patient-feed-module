@@ -1,5 +1,10 @@
 <?php namespace Vanderbilt\EHRPatientFeedExternalModule;
 
+if(SUPER_USER !== '1'){
+    header('Content-Type: application/json');
+    die(json_encode(['message' => 'You do not have access to create or edit feeds because you are not a SUPER USER.']));
+}
+
 $feedId = $_POST['feed_id'];
 
 $creatingFeed = false;
