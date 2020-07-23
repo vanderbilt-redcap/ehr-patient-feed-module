@@ -1,6 +1,6 @@
 <?php namespace Vanderbilt\EHRPatientFeedExternalModule;
 
-$subscribedFeeds = $module->getSubscribedFeedsForCurrentProject(UNSUBSCRIBED);
+$subscribedFeeds = $module->getSubscribedFeedsForCurrentProject();
 
 if($module->isOnSubscribedPage()){
     $feeds = $subscribedFeeds;
