@@ -56,8 +56,13 @@ class EHRPatientFeedExternalModule extends \ExternalModules\AbstractExternalModu
             }
         }
         catch(\Throwable $t){
-            $message = str_replace("\n", "<br>", $t->__toString());
-            $this->sendErrorEmail($message);
+            if(SERVER_NAME === 'redcap.vanderbilt.edu'){
+                $message = str_replace("\n", "<br>", $t->__toString());
+                $this->sendErrorEmail($message);
+            }
+            else{
+                throw $t;
+            }
         }
     }
 
