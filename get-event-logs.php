@@ -28,7 +28,11 @@ $results = $module->queryLogs("
 $rows = [];
 while($row = $results->fetch_assoc()){
 	$content = $row['content'];
+	$mrn = '';
+
 	if(!empty($content)){
+		$mrn = $module->getMRNForPostContent($content);
+
 		$dom = new DOMDocument;
 		$dom->preserveWhiteSpace = false;
 		$dom->loadXML($row['content']);
@@ -38,6 +42,7 @@ while($row = $results->fetch_assoc()){
 	}
 
 	$row['content'] = '<textarea>' . $content . '</textarea>';
+	$row['mrn'] = $mrn;
 	$rows[] = $row;
 }
 

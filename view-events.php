@@ -43,6 +43,10 @@ $feedId = $_GET['feed-id'];
                 {
                     data: 'content',
                     title: 'POST Content'
+                },
+                {
+                    data: 'mrn',
+                    title: 'Resolved MRN'
                 }
             ]
         })

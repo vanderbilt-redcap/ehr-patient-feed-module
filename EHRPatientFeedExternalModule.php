@@ -76,23 +76,7 @@ class EHRPatientFeedExternalModule extends \ExternalModules\AbstractExternalModu
             return;
         }
 
-        $xml = simplexml_load_string($content);
-        if($xml === false){
-            throw new Exception("The posted XML was not valid: $content");
-        }
-    
-        $primaryEntity = $xml->primaryEntity;
-        if($primaryEntity){
-            // We only saw three requests in this format on the original ED SOA test project.
-            $id = $primaryEntity->id->__toString();
-        }
-        else{
-            // We saw 27k requests in this format on the original test project.
-            $primaryEntity = $xml->children('http://schemas.xmlsoap.org/soap/envelope/')->Body->children('')->ProcessEvent->eventInfo->PrimaryEntity;
-            $id = $primaryEntity->ID->__toString();
-        }
-    
-        $mrn = $this->getMRNForExternalID($id);
+        $mrn = $this->getMRNForPostContent($content);
 
         $projectIds = $this->getProjectIdsForFeedId($log['feed_id']);
         foreach($projectIds as $projectId){
@@ -145,6 +129,26 @@ class EHRPatientFeedExternalModule extends \ExternalModules\AbstractExternalModu
         }
     }
 
+    private function getExternalIDFromPostContent($content){
+        $xml = simplexml_load_string($content);
+        if($xml === false){
+            throw new Exception("The posted XML was not valid: $content");
+        }
+    
+        $primaryEntity = $xml->primaryEntity;
+        if($primaryEntity){
+            // We only saw three requests in this format on the original ED SOA test project.
+            $id = $primaryEntity->id->__toString();
+        }
+        else{
+            // We saw 27k requests in this format on the original test project.
+            $primaryEntity = $xml->children('http://schemas.xmlsoap.org/soap/envelope/')->Body->children('')->ProcessEvent->eventInfo->PrimaryEntity;
+            $id = $primaryEntity->ID->__toString();
+        }
+    
+        return $id;
+    }
+
     private function getCachedFieldNames($projectId){
         $cachedFields = @$this->fieldCache[$projectId];
         if($cachedFields === null){
@@ -162,7 +166,9 @@ class EHRPatientFeedExternalModule extends \ExternalModules\AbstractExternalModu
         return array_column($subscriptions, 'project_id');
     }
 
-    private function getMRNForExternalID($externalId){
+    function getMRNForPostContent($content){
+        $externalId = $this->getExternalIDFromPostContent($content);
+
         $cacheSettingKey = "Cached MRN for $externalId";
         $cachedMRN = $this->getSystemSetting($cacheSettingKey);
         if($cachedMRN !== null){
