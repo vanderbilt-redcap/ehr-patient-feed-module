@@ -5,7 +5,7 @@
 
 	"framework-version": 5,
 
-	"description": "TBD (suggestions welcome)",
+	"description": "Creates records in near-real-time as events from EHRs (like Epic) are posted to specific feed URLs created & managed by this module.  Currently, ED SOA events from Epic are supported, including 'External ID' to MRN resolution.  Support for other feed types could easily be added.",
 
 	"authors": [
 		{
