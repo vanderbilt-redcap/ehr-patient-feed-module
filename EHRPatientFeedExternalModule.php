@@ -71,6 +71,11 @@ class EHRPatientFeedExternalModule extends \ExternalModules\AbstractExternalModu
 
     function processEvent($log){
         $content = $log['content'];
+        if(empty($content)){
+            // Just continue.  This might have been someone testing a feed url in a browser.
+            return;
+        }
+
         $xml = simplexml_load_string($content);
         if($xml === false){
             throw new Exception("The posted XML was not valid: $content");
