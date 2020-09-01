@@ -30,7 +30,7 @@
 		]
 	},
 
-	"crons-disabled": [
+	"crons": [
         {
             "cron_name": "cron",
             "cron_description": "EHR Patient Feed",
@@ -38,5 +38,36 @@
             "cron_frequency": "60",
             "cron_max_run_time": "3600"
         }
-    ]
+	],
+	
+	"system-settings": [
+		{
+			"key": "epic-interconnect-url",
+			"name": "Epic Interconnect URL",
+			"type": "text"
+		},
+		{
+			"key": "epic-client-id",
+			"name": "Epic Client ID",
+			"type": "text"
+		},
+		{
+			"key": "epic-username",
+			"name": "Epic Backend Username",
+			"type": "text"
+		},
+		{
+			"key": "epic-password",
+			"name": "Epic Backend Password",
+			"type": "password"
+		}
+	],
+
+	"project-settings": [
+		{
+			"key": "mrn-field-name",
+			"name": "MRN Field",
+			"type": "field-list"
+		}
+	]
 }

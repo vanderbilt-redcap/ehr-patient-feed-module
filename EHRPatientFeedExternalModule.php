@@ -1,6 +1,6 @@
 <?php namespace Vanderbilt\EHRPatientFeedExternalModule;
 
-use Vanderbilt\REDCap\Classes\Fhir\FhirEhr;
+use Exception;
 
 const SUBSCRIBED = 'subscribed';
 const UNSUBSCRIBED = 'unsubscribed';
@@ -8,86 +8,84 @@ const FEED_SETTINGS_UPDATED = 'Feed settings updated';
 const FEED_SUBSCRIPTION_UPDATED = 'Feed subscription updated';
 const EVENT_POSTED = 'Event posted';
 const LAST_PROCESSED_LOG_ID = 'last-processed-log-id';
+const CONNECTION_SETTING_KEYS = [
+    'epic-interconnect-url',
+    'epic-client-id',
+    'epic-username',
+    'epic-password',
+];
 
 class EHRPatientFeedExternalModule extends \ExternalModules\AbstractExternalModule
 {    
     function cron(){
-        // TODO - This method is partially pseudo-code and needs to be finalized.
+        $this->epicConnectionInfo = $this->getEpicConnectionInfo();
+        if(count($this->epicConnectionInfo) !== count(CONNECTION_SETTING_KEYS)){
+            // The cron won't run until all the credentials are entered.
+            return;
+        }
 
         $lastProcessedLogId = $this->getSystemSetting(LAST_PROCESSED_LOG_ID);
         if($lastProcessedLogId === null){
             $lastProcessedLogId = 0;
         }
 
-        $result = $this->queryLogs('select log_id, feed_id, content where log_id > ? and message = ? order by log_id asc', [$lastProcessedLogId, EVENT_POSTED]);
-        while($log = $result->fetch_assoc()){
-            $this->processEvent($log);
-            $this->setSystemSetting(LAST_PROCESSED_LOG_ID, $log['log_id']);
+        $result = $this->queryLogs('
+            select log_id, feed_id, content
+            where message = ?
+            and log_id > ?
+            order by log_id asc
+        ', [EVENT_POSTED, $lastProcessedLogId]);
 
-            if($hasRunMoreThanAMinute()){
-                $this->handleError();
-                break;
+        $startTime = time();
+        while($log = $result->fetch_assoc()){
+            try{
+                $this->processEvent($log);
+            }
+            catch(Exception $e){
+                throw new Exception("An error occurred on log {$log['log_id']}!", 0, $e);
+            }
+            finally{
+                $this->setSystemSetting(LAST_PROCESSED_LOG_ID, $log['log_id']);
+            }
+
+            $elapsedSeconds = time() - $startTime;
+            if($elapsedSeconds > 60){
+                throw new Exception('Events are being logged faster than they can be processed!');
             }
         }
     }
 
     function processEvent($log){
-        // TODO - This method is partially pseudo-code and needs to be finalized.
-        
         $content = $log['content'];
         $xml = simplexml_load_string($content);
         if($xml === false){
-            $this->handleError_considerArgs();
-            return;
+            throw new Exception("The posted XML was not valid: $content");
         }
     
         $primaryEntity = $xml->primaryEntity;
         if($primaryEntity){
-            // We only saw three requests in this format on the original test project.
+            // We only saw three requests in this format on the original ED SOA test project.
             $id = $primaryEntity->id->__toString();
-            $type = $primaryEntity->type->__toString();
-            $numericId = $id;
         }
         else{
             // We saw 27k requests in this format on the original test project.
             $primaryEntity = $xml->children('http://schemas.xmlsoap.org/soap/envelope/')->Body->children('')->ProcessEvent->eventInfo->PrimaryEntity;
             $id = $primaryEntity->ID->__toString();
-            $type = $primaryEntity->Type->__toString();
-    
-            $firstLetter = $id[0];
-            if(!in_array($firstLetter, ['Z', 'M'])){
-                var_dump(['unknown ID starting letter ', $id, $content]);
-                $this->handleError();
-                return;
-            }
-    
-            $numericId = ltrim($id, $firstLetter);
         }
     
-        if(!ctype_digit($numericId)){
-            var_dump(['not numeric ', $id, $content, $primaryEntity]);
-            $this->handleError();
-            return;
-        }
-    
-        if($type !== 'EPT'){
-            var_dump(['Unknown primary entity type found: ', $type, $content]);
-            $this->handleError();
-            return;
-        }
-        
-        if(!$this->isMRNValid($mrn)){
-            $this->handleError();
-            return;
-        }
+        $mrn = $this->getMRNForExternalID($id);
 
         $projectIds = $this->getProjectIdsForFeedId($log['feed_id']);
         foreach($projectIds as $projectId){
-            $recordIdFieldName = $this->getCachedRecordIdFieldName($projectId);
-            $mrnFieldName = $this->getCachedMRNFieldName($projectId);
-            
-            $existingRecord = REDCap::getData_needToCheckargs($projectId, "[$mrnFieldName] = '$mrn'" );
+            list($recordIdFieldName, $mrnFieldName) = $this->getCachedFieldNames($projectId);
+            if(empty($mrnFieldName)){
+                // We can't process events if this setting isn't set.
+                continue;
+            }
+
+            $existingRecord = @json_decode(\REDCap::getData($projectId, 'json', null, $recordIdFieldName, null, null, false, false, false, "[$mrnFieldName] = '$mrn'" ), true)[0];
             if($existingRecord){
+                // This MRN has already been added
                 continue;
             }
 
@@ -102,27 +100,116 @@ class EHRPatientFeedExternalModule extends \ExternalModules\AbstractExternalModu
                 $autoNumbering = true;
             }
 
-            $result = $this->saveData_check_args($projectId, 'json', json_encode([$data]), $autoNumbering);
-            if(resultHasWarningsOrErrors()){
-                $this->handleError();    
+            $result = \REDCap::saveData(
+                $projectId,
+                'json',
+                json_encode([$data]),
+                'normal',
+                'YMD',
+                'flat',
+                null,
+                true,
+                true,
+                true,
+                false,
+                true,
+                [],
+                false,
+                true,
+                false,
+                $autoNumbering
+            );
+
+            if(!empty($result['errors']) || !empty($result['warnings'])){
+                throw new Exception("Error calling saveData(): " . json_encode($result, JSON_PRETTY_PRINT));
             }
         }
     }
 
-    function handleError($message){
-        $this->log_thinkAboutItMore($message);
-        if(!$this->hasRecentError()){
-            // email a link to an error log page (maybe build a log viewer page into the framework instead of this module!?!?!?)
+    private function getCachedFieldNames($projectId){
+        $cachedFields = @$this->fieldCache[$projectId];
+        if($cachedFields === null){
+            $cachedFields = $this->fieldCache[$projectId] = [
+                $this->getRecordIdField($projectId),
+                $this->getProjectSetting('mrn-field-name', $projectId),
+            ];
         }
+
+        return $cachedFields;
+    }
+
+    private function getProjectIdsForFeedId($feedId){
+        $subscriptions = $this->getFeedSubscriptions('and feed_id = ?', [$feedId]);
+        return array_column($subscriptions, 'project_id');
+    }
+
+    private function getMRNForExternalID($externalId){
+        $cacheSettingKey = "Cached MRN for $externalId";
+        $cachedMRN = $this->getSystemSetting($cacheSettingKey);
+        if($cachedMRN !== null){
+            return $cachedMRN;
+        }
+
+        list($url, $clientId, $username, $password) = $this->epicConnectionInfo;
+
+        $url .= '/api/epic/2015/Common/Patient/GetPatientIdentifiers/Patient/Identifiers';
+
+        $client = new \GuzzleHttp\Client([
+            'headers' =>  [
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/x-www-form-urlencoded',
+                'Authorization' => 'Basic ' .  base64_encode("emp\$$username:$password"),
+                'Epic-Client-ID' => $clientId,
+            ]
+        ]);
+
+        $params = [
+            'form_params' => [
+                'PatientID' => $externalId,
+                'PatientIDType' => 'External',
+                'UserID' => $username,
+                'UserIDType' => 'External'
+            ]
+        ];
+
+        $response = $client->request('POST', $url, $params);
+        $data = json_decode($response->getBody(), true);
+
+        foreach($data['Identifiers'] as $identifier){
+            if($identifier['IDType'] === 'MRN'){
+                $mrn = $identifier['ID'];
+            }
+        }
+        
+        if(strlen($mrn) !== 9 || !ctype_digit($mrn)){
+            throw new Exception("Error looking up the MRN for $externalId");
+        }
+
+        $this->setSystemSetting($cacheSettingKey, $mrn);
+
+        return $mrn;
+    }
+
+    private function getEpicConnectionInfo(){
+        $epicConnectionInfo = [];
+
+        foreach(CONNECTION_SETTING_KEYS as $key){
+            $value = $this->getSystemSetting($key);
+            if(!empty($value)){
+                $epicConnectionInfo[] = $value;
+            }
+        }
+
+        return $epicConnectionInfo;
     }
 
     function getLatestLogIdsForEachFeed($message, $additionalClauses = ''){
         $result = $this->queryLogs("
-            select max(log_id) as log_id, feed_id
+            select max(log_id) as log_id, feed_id, project_id
             where
                 message = ?
                 $additionalClauses
-            group by feed_id
+            group by feed_id, project_id
         ", $message);
 
         $latestLogIds = [];
@@ -183,27 +270,36 @@ class EHRPatientFeedExternalModule extends \ExternalModules\AbstractExternalModu
     }
 
     function getSubscribedFeedsForCurrentProject(){
-        // The queryLogs() under the hood will automatically only return feed for the current project
-        // (since no project_id logic is specified and $_GET['pid'] is set).
-        $latestSubscriptionLogIds = $this->getLatestLogIdsForEachFeed(FEED_SUBSCRIPTION_UPDATED);
+        $subscriptions = $this->getFeedSubscriptions();
+        return $this->getFeeds(array_column($subscriptions, 'feed_id'));
+    }
 
+    private function getFeedSubscriptions($additionalClauses = '', $parameters = []){
+        // The value of $_GET['pid'] will control whether queryLogs() under the hood
+        // returns feeds for the current project or all projects
+        $latestSubscriptionLogIds = $this->getLatestLogIdsForEachFeed(FEED_SUBSCRIPTION_UPDATED);
+        
         if(empty($latestSubscriptionLogIds)){
             return [];
         }
 
+        array_unshift($parameters, SUBSCRIBED);
+        
         $result = $this->queryLogs("
-            select feed_id, status
+            select feed_id, status, project_id
             where
                 log_id in (" . implode(',', $latestSubscriptionLogIds) . ")
                 and status = ?
-        ", SUBSCRIBED);
+                $additionalClauses
+        ", $parameters);
+        
 
-        $subscribedFeedIds = [];
+        $subscriptions = [];
         while($row = $result->fetch_assoc()){
-            $subscribedFeedIds[] = $row['feed_id'];
+            $subscriptions[] = $row;
         }
 
-        return $this->getFeeds($subscribedFeedIds);
+        return $subscriptions;
     }
 
     function feedLog($feedId, $message, $params = []){
