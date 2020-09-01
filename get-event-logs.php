@@ -27,12 +27,17 @@ $results = $module->queryLogs("
 
 $rows = [];
 while($row = $results->fetch_assoc()){
-	$dom = new DOMDocument;
-	$dom->preserveWhiteSpace = false;
-	$dom->loadXML($row['content']);
-	$dom->formatOutput = true;
+	$content = $row['content'];
+	if(!empty($content)){
+		$dom = new DOMDocument;
+		$dom->preserveWhiteSpace = false;
+		$dom->loadXML($row['content']);
+		$dom->formatOutput = true;
 
-	$row['content'] = '<textarea>' . $dom->saveXML() . '</textarea>';
+		$content = $dom->saveXML();
+	}
+
+	$row['content'] = '<textarea>' . $content . '</textarea>';
 	$rows[] = $row;
 }
 
