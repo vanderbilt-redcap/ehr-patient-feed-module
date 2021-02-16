@@ -134,7 +134,7 @@ class EHRPatientFeedExternalModule extends \ExternalModules\AbstractExternalModu
         }
     }
 
-    private function getExternalIDFromPostContent($content){
+    function getExternalIDFromPostContent($content){
         $xml = simplexml_load_string($content);
         if($xml === false){
             throw new Exception("The posted XML was not valid: $content");
@@ -147,11 +147,12 @@ class EHRPatientFeedExternalModule extends \ExternalModules\AbstractExternalModu
         }
         else{
             // We saw 27k requests in this format on the original test project.
-            $primaryEntity = $xml->children('http://schemas.xmlsoap.org/soap/envelope/')->Body->children('')->ProcessEvent->eventInfo->PrimaryEntity;
+            $namespace = reset($xml->getNamespaces()); // We've seem two different namespaces used.
+            $primaryEntity = $xml->children($namespace)->Body->children('')->ProcessEvent->eventInfo->PrimaryEntity;
             $id = $primaryEntity->ID->__toString();
         }
     
-        return $id;
+        return trim($id);
     }
 
     private function getCachedFieldNames($projectId){
