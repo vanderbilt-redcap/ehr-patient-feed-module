@@ -8,7 +8,7 @@ $module->log(EVENT_POSTED, [
 header('Content-Type: application/soap+xml; charset=utf-8');
 
 ?>
-<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:urn="urn:epic-com:Events.2010.Services.Notification">
+<soapenv:Envelope xmlns:soapenv="http://www.w3.org/2003/05/soap-envelope" xmlns:urn="urn:epic-com:Events.2010.Services.Notification">
    <soapenv:Header/>
    <soapenv:Body>
       <urn:ProcessEventResponse/>
