@@ -31,14 +31,22 @@ while($row = $results->fetch_assoc()){
 	$mrn = '';
 
 	if(!empty($content)){
-		$mrn = $module->getMRNForPostContent($content);
+		try{
+			$mrn = $module->getMRNForPostContent($content);
+	
+			$dom = new DOMDocument;
+			$dom->preserveWhiteSpace = false;
+			$dom->loadXML($row['content']);
+			$dom->formatOutput = true;
 
-		$dom = new DOMDocument;
-		$dom->preserveWhiteSpace = false;
-		$dom->loadXML($row['content']);
-		$dom->formatOutput = true;
-
-		$content = $dom->saveXML();
+			$content = $dom->saveXML();
+		}
+		catch(Throwable $t){
+			$content = "Error Parsing Content: " . json_encode([
+				'error' => $t->__toString(),
+				'content' => $content
+			], JSON_PRETTY_PRINT);
+		}
 	}
 
 	$row['content'] = '<textarea>' . $content . '</textarea>';
