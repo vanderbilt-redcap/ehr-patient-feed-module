@@ -16,11 +16,11 @@ const CONNECTION_SETTING_KEYS = [
 ];
 
 class EHRPatientFeedExternalModule extends \ExternalModules\AbstractExternalModule
-{    
+{
     function cron(){
         try{
-            $this->epicConnectionInfo = $this->getEpicConnectionInfo();
-            if(count($this->epicConnectionInfo) !== count(CONNECTION_SETTING_KEYS)){
+            $epicConnectionInfo = $this->getEpicConnectionInfo();
+            if(count($epicConnectionInfo) !== count(CONNECTION_SETTING_KEYS)){
                 // The cron won't run until all the credentials are entered.
                 return;
             }
@@ -181,7 +181,7 @@ class EHRPatientFeedExternalModule extends \ExternalModules\AbstractExternalModu
             return $cachedMRN;
         }
 
-        list($url, $clientId, $username, $password) = $this->epicConnectionInfo;
+        list($url, $clientId, $username, $password) = $this->getEpicConnectionInfo();
 
         $url .= '/api/epic/2015/Common/Patient/GetPatientIdentifiers/Patient/Identifiers';
 
@@ -222,16 +222,21 @@ class EHRPatientFeedExternalModule extends \ExternalModules\AbstractExternalModu
     }
 
     private function getEpicConnectionInfo(){
-        $epicConnectionInfo = [];
+        if(!isset($this->epicConnectionInfo)){
 
-        foreach(CONNECTION_SETTING_KEYS as $key){
-            $value = $this->getSystemSetting($key);
-            if(!empty($value)){
-                $epicConnectionInfo[] = $value;
+            $epicConnectionInfo = [];
+    
+            foreach(CONNECTION_SETTING_KEYS as $key){
+                $value = $this->getSystemSetting($key);
+                if(!empty($value)){
+                    $epicConnectionInfo[] = $value;
+                }
             }
+    
+            $this->epicConnectionInfo = $epicConnectionInfo;
         }
 
-        return $epicConnectionInfo;
+        return $this->epicConnectionInfo;
     }
 
     function getLatestLogIdsForEachFeed($message, $additionalClauses = ''){
