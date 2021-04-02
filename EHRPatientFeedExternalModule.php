@@ -213,7 +213,7 @@ class EHRPatientFeedExternalModule extends \ExternalModules\AbstractExternalModu
         }
         
         if(strlen($mrn) !== 9 || !ctype_digit($mrn)){
-            throw new Exception("Error looking up the MRN for $externalId");
+            throw new Exception("Error looking up the MRN for $externalId.  Received the following instead: $mrn");
         }
 
         $this->setSystemSetting($cacheSettingKey, $mrn);
