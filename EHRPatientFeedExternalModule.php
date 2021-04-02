@@ -204,7 +204,8 @@ class EHRPatientFeedExternalModule extends \ExternalModules\AbstractExternalModu
         ];
 
         $response = $client->request('POST', $url, $params);
-        $data = json_decode($response->getBody(), true);
+        $responseBody = $response->getBody() . ''; // append empty string to convert stream to string
+        $data = json_decode($responseBody, true);
 
         foreach($data['Identifiers'] as $identifier){
             if($identifier['IDType'] === 'MRN'){
@@ -213,7 +214,7 @@ class EHRPatientFeedExternalModule extends \ExternalModules\AbstractExternalModu
         }
         
         if(strlen($mrn) !== 9 || !ctype_digit($mrn)){
-            throw new Exception("Error looking up the MRN for $externalId.  Received the following instead: $mrn");
+            throw new Exception("Error looking up the MRN for $externalId.  Received the following response: $responseBody");
         }
 
         $this->setSystemSetting($cacheSettingKey, $mrn);
