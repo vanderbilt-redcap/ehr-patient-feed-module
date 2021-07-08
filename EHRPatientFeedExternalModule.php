@@ -128,7 +128,16 @@ class EHRPatientFeedExternalModule extends \ExternalModules\AbstractExternalModu
                 $autoNumbering
             );
 
-            if(!empty($result['errors']) || !empty($result['warnings'])){
+            global $lang;
+            if(
+                (
+                    !empty($result['errors'])
+                    &&
+                    strpos($result['errors'][0], $lang['data_import_tool_154']) === false // duplicate secondary ID
+                )
+                ||
+                !empty($result['warnings'])
+            ){
                 throw new Exception("Error calling saveData(): " . json_encode($result, JSON_PRETTY_PRINT));
             }
         }
