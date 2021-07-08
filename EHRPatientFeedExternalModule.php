@@ -18,50 +18,39 @@ const CONNECTION_SETTING_KEYS = [
 class EHRPatientFeedExternalModule extends \ExternalModules\AbstractExternalModule
 {
     function cron(){
-        try{
-            $epicConnectionInfo = $this->getEpicConnectionInfo();
-            if(count($epicConnectionInfo) !== count(CONNECTION_SETTING_KEYS)){
-                // The cron won't run until all the credentials are entered.
-                return;
-            }
-    
-            $lastProcessedLogId = $this->getSystemSetting(LAST_PROCESSED_LOG_ID);
-            if($lastProcessedLogId === null){
-                $lastProcessedLogId = 0;
-            }
-    
-            $result = $this->queryLogs('
-                select log_id, feed_id, content
-                where message = ?
-                and log_id > ?
-                order by log_id asc
-            ', [EVENT_POSTED, $lastProcessedLogId]);
-    
-            $startTime = time();
-            while($log = $result->fetch_assoc()){
-                try{
-                    $this->processEvent($log);
-                }
-                catch(Exception $e){
-                    throw new Exception("An error occurred on log {$log['log_id']}!", 0, $e);
-                }
-                finally{
-                    $this->setSystemSetting(LAST_PROCESSED_LOG_ID, $log['log_id']);
-                }
-    
-                $elapsedSeconds = time() - $startTime;
-                if($elapsedSeconds > 60){
-                    throw new Exception('Events are being logged faster than they can be processed!');
-                }
-            }
+        $epicConnectionInfo = $this->getEpicConnectionInfo();
+        if(count($epicConnectionInfo) !== count(CONNECTION_SETTING_KEYS)){
+            // The cron won't run until all the credentials are entered.
+            return;
         }
-        catch(\Throwable $t){
-            if(SERVER_NAME === 'redcap.vanderbilt.edu'){
-                $message = str_replace("\n", "<br>", $t->__toString());
-                $this->sendErrorEmail($message);
+
+        $lastProcessedLogId = $this->getSystemSetting(LAST_PROCESSED_LOG_ID);
+        if($lastProcessedLogId === null){
+            $lastProcessedLogId = 0;
+        }
+
+        $result = $this->queryLogs('
+            select log_id, feed_id, content
+            where message = ?
+            and log_id > ?
+            order by log_id asc
+        ', [EVENT_POSTED, $lastProcessedLogId]);
+
+        $startTime = time();
+        while($log = $result->fetch_assoc()){
+            try{
+                $this->processEvent($log);
             }
-            else{
-                throw $t;
+            catch(Exception $e){
+                throw new Exception("An error occurred on log {$log['log_id']}!", 0, $e);
+            }
+            finally{
+                $this->setSystemSetting(LAST_PROCESSED_LOG_ID, $log['log_id']);
+            }
+
+            $elapsedSeconds = time() - $startTime;
+            if($elapsedSeconds > 60){
+                throw new Exception('Events are being logged faster than they can be processed!');
             }
         }
     }
