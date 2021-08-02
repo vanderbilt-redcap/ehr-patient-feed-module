@@ -211,7 +211,11 @@ class EHRPatientFeedExternalModule extends \ExternalModules\AbstractExternalModu
             }
         }
         
-        if(strlen($mrn) !== 9 || !ctype_digit($mrn)){
+        if(
+            ($_SERVER['HTTP_HOST'] !== 'redcaptest.vanderbilt.edu' && strlen($mrn) !== 9) // Shorter MRNs are allowed on Epic test systems.
+            ||
+            !ctype_digit($mrn)
+        ){
             throw new Exception("Error looking up the MRN for $externalId.  Received the following response: $responseBody");
         }
 
