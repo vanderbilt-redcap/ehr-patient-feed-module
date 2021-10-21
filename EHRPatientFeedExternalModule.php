@@ -55,12 +55,12 @@ class EHRPatientFeedExternalModule extends \ExternalModules\AbstractExternalModu
         }
     }
 
-    private function sendErrorEmail($message){
-        $to = 'mark.mcever@vumc.org';
-        $from = $GLOBALS['from_email'];
-        $subject = $this->getModuleName() . ' Module Error';
-        
-        \REDCap::email($to, $from, $subject, $message);
+    private function getProjectsWithModuleEnabled(){
+        if(!isset($this->projectsWithModuleEnabled)){
+            $this->projectsWithModuleEnabled = parent::getProjectsWithModuleEnabled();
+        }
+
+        return $this->projectsWithModuleEnabled;
     }
 
     function processEvent($log){
@@ -72,7 +72,11 @@ class EHRPatientFeedExternalModule extends \ExternalModules\AbstractExternalModu
 
         $mrn = $this->getMRNForPostContent($content);
 
-        $projectIds = $this->getProjectIdsForFeedId($log['feed_id']);
+        $projectIds = array_intersect(
+            $this->getProjectIdsForFeedId($log['feed_id']),
+            $this->getProjectsWithModuleEnabled()
+        );
+        
         foreach($projectIds as $projectId){
             list($recordIdFieldName, $mrnFieldName, $datetimeFieldName) = $this->getCachedFieldNames($projectId);
             if(empty($mrnFieldName)){
