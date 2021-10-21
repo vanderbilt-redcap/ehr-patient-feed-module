@@ -74,7 +74,7 @@ class EHRPatientFeedExternalModule extends \ExternalModules\AbstractExternalModu
 
         $projectIds = $this->getProjectIdsForFeedId($log['feed_id']);
         foreach($projectIds as $projectId){
-            list($recordIdFieldName, $mrnFieldName) = $this->getCachedFieldNames($projectId);
+            list($recordIdFieldName, $mrnFieldName, $datetimeFieldName) = $this->getCachedFieldNames($projectId);
             if(empty($mrnFieldName)){
                 // We can't process events if this setting isn't set.
                 continue;
@@ -95,6 +95,10 @@ class EHRPatientFeedExternalModule extends \ExternalModules\AbstractExternalModu
                 // The record ID is required, but doesn't really matter since autonumbering will overwrite it.
                 $data[$recordIdFieldName] = 1;
                 $autoNumbering = true;
+            }
+
+            if(!empty($datetimeFieldName)){
+                $data[$datetimeFieldName] = date('Y-m-d H:i:s');
             }
 
             $result = \REDCap::saveData(
@@ -159,6 +163,7 @@ class EHRPatientFeedExternalModule extends \ExternalModules\AbstractExternalModu
             $cachedFields = $this->fieldCache[$projectId] = [
                 $this->getRecordIdField($projectId),
                 $this->getProjectSetting('mrn-field-name', $projectId),
+                $this->getProjectSetting('datetime-field-name', $projectId),
             ];
         }
 

@@ -73,6 +73,11 @@
 			"key": "mrn-field-name",
 			"name": "MRN Field",
 			"type": "field-list"
+		},
+		{
+			"key": "datetime-field-name",
+			"name": "Record Added Datetime (w/ seconds) Field Name",
+			"type": "field-list"
 		}
 	]
 }
