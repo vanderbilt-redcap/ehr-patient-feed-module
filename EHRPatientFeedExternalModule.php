@@ -49,7 +49,7 @@ class EHRPatientFeedExternalModule extends \ExternalModules\AbstractExternalModu
             }
 
             $elapsedSeconds = time() - $startTime;
-            if($elapsedSeconds > 60){
+            if($elapsedSeconds > 60*3){
                 throw new Exception('Events are being logged faster than they can be processed!');
             }
         }
