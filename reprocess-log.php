@@ -6,6 +6,9 @@ $result = $module->queryLogs('
 ', $_GET['id']);
 
 $log = $result->fetch_assoc();
+if($log === null){
+    throw new Exception('Log not found!');
+}
 
 $module->processEvent($log);
 
