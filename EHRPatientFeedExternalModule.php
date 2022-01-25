@@ -42,7 +42,7 @@ class EHRPatientFeedExternalModule extends \ExternalModules\AbstractExternalModu
                 $this->processEvent($log);
             }
             catch(Exception $e){
-                throw new Exception("An error occurred on log {$log['log_id']}!  <a href='" . $this->getUrl('reprocess-log') . "&id={$log['log_id']}'>Click here</a> to try to process this log again.", 0, $e);
+                throw new Exception("An error occurred on log {$log['log_id']}!  <a href='" . $this->getUrl('reprocess-log.php') . "&id={$log['log_id']}'>Click here</a> to try to process this log again.", 0, $e);
             }
             finally{
                 $this->setSystemSetting(LAST_PROCESSED_LOG_ID, $log['log_id']);
